@@ -2,16 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import AuthService from '../services/AuthService';
 
 const colors = {
   appDarkGreen: '#00241b',
@@ -25,7 +29,6 @@ const colors = {
   white: '#ffffff'
 };
 
-// custom textfield component
 const CustomTextField = ({ label, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry }) => (
   <View style={styles.textFieldContainer}>
     <Text style={styles.textFieldLabel}>{label}</Text>
@@ -42,7 +45,6 @@ const CustomTextField = ({ label, placeholder, value, onChangeText, keyboardType
   </View>
 );
 
-// auth hedaer component
 const AuthHeader = ({ authMode, onBack }) => (
   <LinearGradient
     colors={[colors.appDarkGreen, colors.appMediumGreen]}
@@ -68,8 +70,7 @@ const AuthHeader = ({ authMode, onBack }) => (
   </LinearGradient>
 );
 
-// Pprimary button component with press animations
-const PrimaryButton = ({ title, onPress, style, disabled }) => {
+const PrimaryButton = ({ title, onPress, style, disabled, loading }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -125,16 +126,18 @@ const PrimaryButton = ({ title, onPress, style, disabled }) => {
           end={{ x: 1, y: 1 }}
           style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>{title}</Text>
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Sending...' : title}
+          </Text>
         </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
   );
 };
 
-// login screen content
-const LoginScreen = ({ onBack, onSwitchToRegister }) => {
+const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -154,69 +157,82 @@ const LoginScreen = ({ onBack, onSwitchToRegister }) => {
     ]).start();
   }, []);
 
-  const handleSendLink = () => {
-    // actually put logic here
-    console.log('Sending login link to:', email);
+  const handleSendLink = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email Required', 'Please enter your email address.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await AuthService.sendMagicLink(email.trim());
+      onEmailSent(email.trim());
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to send link. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.authScreenContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <AuthHeader authMode="login" onBack={onBack} />
-      
-      <Animated.View 
-        style={[
-          styles.authContainer,
-          { 
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView 
+        style={styles.authScreenContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
-        {/*  */}
-        <View style={styles.authContent}>
-          {/* this wrapper keeps the top content grouped together */}
-          <View>
-            <View style={styles.authTitleContainer}>
-              <Text style={styles.authTitle}>Sign In</Text>
-              <Text style={styles.authSubtitle}>Enter your email to receive a login link.</Text>
-            </View>
-            
-            <View style={styles.formContainer}>
-              <CustomTextField
-                label="Email"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
+        <AuthHeader authMode="login" onBack={onBack} />
+        
+        <Animated.View 
+          style={[
+            styles.authContainer,
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.authContent}>
+            <View>
+              <View style={styles.authTitleContainer}>
+                <Text style={styles.authTitle}>Sign In</Text>
+                <Text style={styles.authSubtitle}>Enter your email to receive a login link.</Text>
+              </View>
+              
+              <View style={styles.formContainer}>
+                <CustomTextField
+                  label="Email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              
+              <PrimaryButton
+                title="Send Login Link"
+                onPress={handleSendLink}
+                loading={loading}
+                disabled={!email.trim() || loading}
+                style={{ marginBottom: 24 }}
               />
             </View>
             
-            <PrimaryButton
-              title="Send Login Link"
-              onPress={handleSendLink}
-              style={{ marginBottom: 24 }}
-            />
+            <View style={styles.switchAuthContainer}>
+              <Text style={styles.switchAuthText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={onSwitchToRegister}>
+                <Text style={styles.switchAuthLink}>Sign up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          
-          {/* this part is pushed to the bottom by the flexbox styling on authContent */}
-          <View style={styles.switchAuthContainer}>
-            <Text style={styles.switchAuthText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={onSwitchToRegister}>
-              <Text style={styles.switchAuthLink}>Sign up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
-    </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  // Auth Header Styles
   authHeader: {
     height: 280,
   },
@@ -256,17 +272,13 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.9,
   },
-  
-  // Auth Screen Styles
   authScreenContainer: {
     flex: 1,
     backgroundColor: colors.white,
   },
-
   authContainer: {
     flex: 1,
   },
-
   authContent: {
     flex: 1, 
     justifyContent: 'space-between', 
@@ -287,8 +299,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.appTextGray,
   },
-  
-  // Form Styles
   formContainer: {
     marginBottom: 32,
   },
@@ -310,8 +320,6 @@ const styles = StyleSheet.create({
     borderColor: colors.appInputBorder,
     color: colors.appFormLabel,
   },
-  
-  // Button Styles
   primaryButton: {
     borderRadius: 12,
     paddingVertical: 16,
@@ -327,8 +335,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.appDarkGreen,
   },
-  
-  // Switch Auth Styles
   switchAuthContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
