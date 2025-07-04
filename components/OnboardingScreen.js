@@ -5,13 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 
 import {
-    Animated,
-    Dimensions,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -61,7 +61,7 @@ const onboardingData = [
       { icon: 'star', title: 'Trusted Reviews', description: 'Read reviews from real foodies' }
     ],
     primaryButtonText: 'Join FoodClipz',
-    secondaryButtonText: 'Sign In'
+
   }
 ];
 
@@ -228,7 +228,6 @@ const OnboardingPageContent = ({ data, onPrimaryPress, onSecondaryPress, isActiv
             end={{ x: 1, y: 1 }}
             style={styles.onboardingIconGradient}
           >
-            {/* REPLACE TEXT WITH FONT AWESOME COMPONENT FOR THE MAIN ICON */}
             <FontAwesome5 name={data.icon} size={48} color={colors.appDarkGreen} />
           </LinearGradient>
         </Animated.View>
@@ -256,8 +255,14 @@ const OnboardingPageContent = ({ data, onPrimaryPress, onSecondaryPress, isActiv
       <Animated.View 
         style={[ styles.onboardingButtons, { opacity: titleFadeAnim } ]}
       >
-        <PrimaryButton title={data.primaryButtonText} onPress={onPrimaryPress} style={{ marginBottom: 12 }}/>
-        <SecondaryButton title={data.secondaryButtonText} onPress={onSecondaryPress}/>
+        <PrimaryButton 
+          title={data.primaryButtonText} 
+          onPress={onPrimaryPress} 
+          style={{ marginBottom: data.secondaryButtonText ? 12 : 0 }}
+        />
+        {data.secondaryButtonText && (
+          <SecondaryButton title={data.secondaryButtonText} onPress={onSecondaryPress}/>
+        )}
       </Animated.View>
     </View>
   );
