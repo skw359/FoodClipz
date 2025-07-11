@@ -5,6 +5,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -12,8 +14,13 @@ import AuthService from '../services/AuthService';
 import DeepLinkHandler from '../utils/DeepLinkHandler';
 import DiscoverFeed from './DiscoverFeed';
 import EmailVerificationScreen from './EmailVerificationScreen';
+import AuthService from '../services/AuthService';
+import DeepLinkHandler from '../utils/DeepLinkHandler';
+import DiscoverFeed from './DiscoverFeed';
+import EmailVerificationScreen from './EmailVerificationScreen';
 import LoginScreen from './LoginScreen';
 import OnboardingScreen from './OnboardingScreen';
+import ProfileSetupScreen from './ProfileSetupScreen';
 import ProfileSetupScreen from './ProfileSetupScreen';
 import RegisterScreen from './RegisterScreen';
 
@@ -79,6 +86,9 @@ const FoodClipzApp = () => {
   const [userEmail, setUserEmail] = useState('');
   const [userData, setUserData] = useState(null);
   const [registrationData, setRegistrationData] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
+  const [userData, setUserData] = useState(null);
+  const [registrationData, setRegistrationData] = useState(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -104,6 +114,17 @@ const FoodClipzApp = () => {
       setCurrentScreen(toScreen);
       slideAnim.setValue(-slideDirection);
       
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        })
       Animated.parallel([
         Animated.timing(opacityAnim, {
           toValue: 1,
@@ -222,6 +243,87 @@ const FoodClipzApp = () => {
     animateScreenTransition('onboarding');
   };
 
+  const handleEmailSent = (email, firstName = null, lastName = null) => {
+    setUserEmail(email);
+    if (firstName && lastName) {
+      setRegistrationData({ firstName, lastName });
+    }
+    animateScreenTransition('emailVerification');
+  };
+
+  const handleVerificationSuccess = (user) => {
+  console.log('🔍 Verification success called with user:', user);
+  setUserData(user);
+  
+  // first do a check if profile is already completed
+  const isProfileCompleted = user.profileCompleted || user.profile_completed;
+  
+  console.log('Profile completed status:', isProfileCompleted);
+  console.log('User data keys:', Object.keys(user));
+  
+  if (isProfileCompleted) {
+    console.log('profile already completed, going to feed now');
+    animateScreenTransition('feed');
+  } else {
+    console.log('profile not completed, going to setup');
+    animateScreenTransition('profileSetup');
+  }
+};
+
+  const handleProfileSetupComplete = (completedUser) => {
+  const updatedUser = {
+    ...completedUser, profileCompleted: true, profile_completed: true
+  };
+  
+  setUserData(updatedUser);
+  console.log('PROFILE COMPLETE:', updatedUser);
+  
+  // nav to main feed
+  animateScreenTransition('feed');
+};
+
+  const resendEmail = async () => {
+    if (registrationData) {
+      return AuthService.sendMagicLink(userEmail, registrationData.firstName, registrationData.lastName);
+    } else {
+      return AuthService.sendMagicLink(userEmail);
+    }
+  };
+
+  // Handle navigation from DiscoverFeed and other main app screens
+  const handleMainAppNavigation = (destination) => {
+    switch (destination) {
+      case 'feed':
+        animateScreenTransition('feed');
+        break;
+      case 'map':
+        animateScreenTransition('map');
+        break;
+      case 'discover':
+        animateScreenTransition('discover');
+        break;
+      case 'profile':
+        animateScreenTransition('profile');
+        break;
+      case 'add':
+        animateScreenTransition('addClip');
+        break;
+      default:
+        animateScreenTransition('feed'); // Default to feed instead of discover
+    }
+  };
+
+  const handleAddClip = () => {
+    animateScreenTransition('addClip');
+  };
+
+  const handleLogout = () => {
+    setUserData(null);
+    setUserEmail('');
+    setRegistrationData(null);
+    animateScreenTransition('onboarding');
+  };
+
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'onboarding':
@@ -236,6 +338,7 @@ const FoodClipzApp = () => {
           <LoginScreen
             onBack={handleBackToOnboarding}
             onSwitchToRegister={handleSwitchToRegister}
+            onEmailSent={handleEmailSent}
             onEmailSent={handleEmailSent}
           />
         );
@@ -312,6 +415,13 @@ const FoodClipzApp = () => {
           console.error('Verification error:', error);
           // prob show an error here but lazy
         }}
+
+      <DeepLinkHandler 
+        onVerificationSuccess={handleVerificationSuccess}
+        onVerificationError={(error) => {
+          console.error('Verification error:', error);
+          // prob show an error here but lazy
+        }}
       />
 
       <Animated.View
@@ -342,6 +452,35 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  // stupid syles for placeholder screens
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.appInputBackground,
+  },
+  placeholderText: {
+    fontSize: 18,
+    color: colors.appTextGray,
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  userInfo: {
+    fontSize: 16,
+    color: colors.appDarkGreen,
+    marginBottom: 20,
+  },
+  backButton: {
+    backgroundColor: colors.appPrimaryGreen,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  backButtonText: {
+    color: colors.appDarkGreen,
+    fontWeight: '600',
+    fontSize: 16,
   },
   // stupid syles for placeholder screens
   center: {
