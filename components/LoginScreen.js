@@ -141,9 +141,8 @@ const PrimaryButton = ({ title, onPress, style, disabled, loading }) => {
           end={{ x: 1, y: 1 }}
           style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>
-            {loading ? 'Sending...' : title}
-          </Text>
+
+          
           <Text style={styles.primaryButtonText}>
             {loading ? 'Sending...' : title}
           </Text>
