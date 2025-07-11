@@ -5,13 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 
 import {
-    Animated,
-    Dimensions,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -26,7 +26,7 @@ const colors = {
   appOnboardingBackground: '#f3f7f5',
 };
 
-//UPDATE THE ONBOARDING DATA WITH FONT AWESOME ICON NAMES
+//UPDATE THE ONBOARDING DATA WITH FONT AWESOME ICON NAMES RN
 const onboardingData = [
   {
     id: 1,
@@ -61,7 +61,7 @@ const onboardingData = [
       { icon: 'star', title: 'Trusted Reviews', description: 'Read reviews from real foodies' }
     ],
     primaryButtonText: 'Join FoodClipz',
-    secondaryButtonText: 'Sign In'
+
   }
 ];
 
@@ -100,7 +100,7 @@ const FeatureListView = ({ features }) => {
                 end={{ x: 1, y: 1 }}
                 style={styles.featureIconContainer}
               >
-                {/* REPLACE TEXT WITH FONT AWESOME COMPONENT */}
+                {/* REPLACE THETEXT WITH FONT AWESOME */}
                 <FontAwesome5 
                     name={feature.icon} 
                     size={18} 
@@ -119,6 +119,7 @@ const FeatureListView = ({ features }) => {
   );
 };
 
+// make a page loader like progress tracker sorta
 const PageIndicator = ({ pageCount, currentPage }) => {
   const scaleAnims = useRef(Array.from({ length: pageCount }, () => new Animated.Value(1))).current;
 
@@ -154,7 +155,7 @@ const PageIndicator = ({ pageCount, currentPage }) => {
 const PrimaryButton = ({ title, onPress, style }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
-
+ // add a press in effect too cuz it'd prob look cool
   const handlePressIn = () => {
     Animated.parallel([
       Animated.spring(scaleAnim, { toValue: 0.98, tension: 300, friction: 10, useNativeDriver: true }),
@@ -228,7 +229,6 @@ const OnboardingPageContent = ({ data, onPrimaryPress, onSecondaryPress, isActiv
             end={{ x: 1, y: 1 }}
             style={styles.onboardingIconGradient}
           >
-            {/* REPLACE TEXT WITH FONT AWESOME COMPONENT FOR THE MAIN ICON */}
             <FontAwesome5 name={data.icon} size={48} color={colors.appDarkGreen} />
           </LinearGradient>
         </Animated.View>
@@ -256,8 +256,14 @@ const OnboardingPageContent = ({ data, onPrimaryPress, onSecondaryPress, isActiv
       <Animated.View 
         style={[ styles.onboardingButtons, { opacity: titleFadeAnim } ]}
       >
-        <PrimaryButton title={data.primaryButtonText} onPress={onPrimaryPress} style={{ marginBottom: 12 }}/>
-        <SecondaryButton title={data.secondaryButtonText} onPress={onSecondaryPress}/>
+        <PrimaryButton 
+          title={data.primaryButtonText} 
+          onPress={onPrimaryPress} 
+          style={{ marginBottom: data.secondaryButtonText ? 12 : 0 }}
+        />
+        {data.secondaryButtonText && (
+          <SecondaryButton title={data.secondaryButtonText} onPress={onSecondaryPress}/>
+        )}
       </Animated.View>
     </View>
   );

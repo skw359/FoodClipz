@@ -2,16 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import AuthService from '../services/AuthService';
 
 const colors = {
   appDarkGreen: '#00241b',
@@ -22,15 +26,29 @@ const colors = {
   appFormLabel: '#374151',
   appInputBorder: '#e3e8f1',
   appInputBackground: '#f8fafc',
-  white: '#ffffff'
+  white: '#ffffff',
+  errorRed: '#ef4444',
+  errorRedLight: '#fef2f2',
+  errorRedDark: '#dc2626'
 };
 
-// custom textfield component
-const CustomTextField = ({ label, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry }) => (
+const CoolTextField = ({ 
+  label, 
+  placeholder, 
+  value, 
+  onChangeText, 
+  keyboardType, 
+  autoCapitalize, 
+  secureTextEntry,
+  hasError
+}) => (
   <View style={styles.textFieldContainer}>
     <Text style={styles.textFieldLabel}>{label}</Text>
     <TextInput
-      style={styles.textField}
+      style={[
+        styles.textField,
+        hasError && styles.textFieldError
+      ]}
       placeholder={placeholder}
       value={value}
       onChangeText={onChangeText}
@@ -42,7 +60,6 @@ const CustomTextField = ({ label, placeholder, value, onChangeText, keyboardType
   </View>
 );
 
-// auth hedaer component
 const AuthHeader = ({ authMode, onBack }) => (
   <LinearGradient
     colors={[colors.appDarkGreen, colors.appMediumGreen]}
@@ -68,8 +85,7 @@ const AuthHeader = ({ authMode, onBack }) => (
   </LinearGradient>
 );
 
-// Pprimary button component with press animations
-const PrimaryButton = ({ title, onPress, style, disabled }) => {
+const PrimaryButton = ({ title, onPress, style, disabled, loading }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -125,16 +141,21 @@ const PrimaryButton = ({ title, onPress, style, disabled }) => {
           end={{ x: 1, y: 1 }}
           style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>{title}</Text>
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Sending...' : title}
+          </Text>
         </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
   );
 };
 
-// login screen content
-const LoginScreen = ({ onBack, onSwitchToRegister }) => {
+const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [userNotFoundError, setUserNotFoundError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -154,69 +175,120 @@ const LoginScreen = ({ onBack, onSwitchToRegister }) => {
     ]).start();
   }, []);
 
-  const handleSendLink = () => {
-    // actually put logic here
-    console.log('Sending login link to:', email);
+  const handleSendLink = async () => {
+    if (!email.trim()) {
+      Alert.alert('email required', 'pls enter your email address.');
+      return;
+    }
+
+    setUserNotFoundError(false);
+    setErrorMessage('');
+    setLoading(true);
+    
+    try {
+      await AuthService.sendMagicLink(email.trim());
+      onEmailSent(email.trim());
+    } catch (error) {
+      // uhhh imma check if it's the specific "user not found" error n then show the error
+      if (error.message && error.message.includes('USER_NOT_FOUND')) {
+        setUserNotFoundError(true);
+        setErrorMessage('No account found with this email address.');
+      } else {
+        // Show popup for other errors cuz idk
+        Alert.alert('Error', error.message || 'Failed to send magic link. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    // when the user clicks "Sign uP"
+  const handleCreateAccount = () => {
+    onSwitchToRegister();
+    // I wanna add pre-fill the email but I might need to pass it
+    // depending on how the registration screen is set up
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.authScreenContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <AuthHeader authMode="login" onBack={onBack} />
-      
-      <Animated.View 
-        style={[
-          styles.authContainer,
-          { 
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView 
+        style={styles.authScreenContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
-        {/*  */}
-        <View style={styles.authContent}>
-          {/* this wrapper keeps the top content grouped together */}
-          <View>
-            <View style={styles.authTitleContainer}>
-              <Text style={styles.authTitle}>Sign In</Text>
-              <Text style={styles.authSubtitle}>Enter your email to receive a login link.</Text>
-            </View>
-            
-            <View style={styles.formContainer}>
-              <CustomTextField
-                label="Email"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
+        <AuthHeader authMode="login" onBack={onBack} />
+        
+        <Animated.View 
+          style={[
+            styles.authContainer,
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.authContent}>
+            <View>
+              <View style={styles.authTitleContainer}>
+                <Text style={styles.authTitle}>Sign In</Text>
+                <Text style={styles.authSubtitle}>Enter your email to receive a login link.</Text>
+              </View>
+              
+              <View style={styles.formContainer}>
+                <CoolTextField
+                  label="Email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (userNotFoundError) {
+                      setUserNotFoundError(false);
+                      setErrorMessage('');
+                    }
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  hasError={userNotFoundError}
+                />
+                
+                {/* error msg */}
+                {userNotFoundError && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>
+                      {errorMessage}
+                    </Text>
+                    <TouchableOpacity onPress={handleCreateAccount}>
+                      <Text style={styles.registerButtonText}>
+                       Tap to register.
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+              
+              <PrimaryButton
+                title="Send Login Link"
+                onPress={handleSendLink}
+                loading={loading}
+                disabled={!email.trim() || loading}
+                style={{ marginBottom: 24 }}
               />
             </View>
             
-            <PrimaryButton
-              title="Send Login Link"
-              onPress={handleSendLink}
-              style={{ marginBottom: 24 }}
-            />
+            <View style={styles.switchAuthContainer}>
+              <Text style={styles.switchAuthText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={onSwitchToRegister}>
+                <Text style={styles.switchAuthLink}>Sign up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          
-          {/* this part is pushed to the bottom by the flexbox styling on authContent */}
-          <View style={styles.switchAuthContainer}>
-            <Text style={styles.switchAuthText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={onSwitchToRegister}>
-              <Text style={styles.switchAuthLink}>Sign up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
-    </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  // Auth Header Styles
   authHeader: {
     height: 280,
   },
@@ -225,7 +297,7 @@ const styles = StyleSheet.create({
   },
   authHeaderContent: {
     flex: 1,
-    paddingTop: 80,
+    paddingTop: 30,
     paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
@@ -256,17 +328,13 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.9,
   },
-  
-  // Auth Screen Styles
   authScreenContainer: {
     flex: 1,
     backgroundColor: colors.white,
   },
-
   authContainer: {
     flex: 1,
   },
-
   authContent: {
     flex: 1, 
     justifyContent: 'space-between', 
@@ -287,8 +355,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.appTextGray,
   },
-  
-  // Form Styles
   formContainer: {
     marginBottom: 32,
   },
@@ -310,8 +376,32 @@ const styles = StyleSheet.create({
     borderColor: colors.appInputBorder,
     color: colors.appFormLabel,
   },
-  
-  // Button Styles
+
+  textFieldError: {
+    borderColor: colors.errorRed,
+    backgroundColor: colors.errorRedLight,
+    borderWidth: 2,
+  },
+  errorContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: colors.errorRedLight,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.errorRed,
+  },
+  errorText: {
+    color: colors.errorRedDark,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  registerButtonText: {
+    color: colors.red,
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'bold',
+  },
+  // END NEW STYLES
   primaryButton: {
     borderRadius: 12,
     paddingVertical: 16,
@@ -327,8 +417,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.appDarkGreen,
   },
-  
-  // Switch Auth Styles
   switchAuthContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -337,11 +425,13 @@ const styles = StyleSheet.create({
   switchAuthText: {
     fontSize: 14,
     color: colors.appTextGray,
+    paddingBottom: 40,
   },
   switchAuthLink: {
     fontSize: 14,
     color: colors.appPrimaryGreen,
     fontWeight: '600',
+    paddingBottom: 40,
   },
 });
 

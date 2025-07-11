@@ -1,19 +1,22 @@
-// components/RegisterScreen.js
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    KeyboardAvoidingView,
-    Linking,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import AuthService from '../services/AuthService';
 
 // Colors
 const colors = {
@@ -45,7 +48,7 @@ const CustomTextField = ({ label, placeholder, value, onChangeText, keyboardType
   </View>
 );
 
-// auth header (where it says foodclipz n stuff)
+// auth header
 const AuthHeader = ({ authMode, onBack }) => (
   <LinearGradient
     colors={[colors.appDarkGreen, colors.appMediumGreen]}
@@ -71,8 +74,8 @@ const AuthHeader = ({ authMode, onBack }) => (
   </LinearGradient>
 );
 
-// primary button component
-const PrimaryButton = ({ title, onPress, style, disabled }) => {
+// primary button
+const PrimaryButton = ({ title, onPress, style, disabled, loading }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -128,7 +131,9 @@ const PrimaryButton = ({ title, onPress, style, disabled }) => {
           end={{ x: 1, y: 1 }}
           style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>{title}</Text>
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Sending...' : title}
+          </Text>
         </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
@@ -136,9 +141,10 @@ const PrimaryButton = ({ title, onPress, style, disabled }) => {
 };
 
 // register screen
-const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
+const RegisterScreen = ({ onBack, onSwitchToLogin, onEmailSent }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -166,30 +172,52 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
     Linking.openURL('');
   };
 
-  const handleContinue = () => {
-    // put actual logic here (aws/nodejs?!?!?!?!?!??!)
-    console.log('Registering user:', { fullName, email });
+  const handleContinue = async () => {
+    if (!fullName.trim() || !email.trim()) {
+      Alert.alert('Required Fields', 'Please enter your full name and email.');
+      return;
+    }
+
+    const nameParts = fullName.trim().split(' ');
+    if (nameParts.length < 2) {
+      Alert.alert('Full Name Required', 'Please enter both your first and last name.');
+      return;
+    }
+
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+
+    setLoading(true);
+
+    try {
+      await AuthService.sendMagicLink(email.trim(), firstName, lastName);
+      onEmailSent(email.trim(), firstName, lastName);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to send verification email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.authScreenContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <AuthHeader authMode="register" onBack={onBack} />
-      
-      <Animated.View 
-        style={[
-          styles.authContainer,
-          { 
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView 
+        style={styles.authScreenContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
-
-        <View style={styles.authContent}>
-            {/* this wrapper keeps the main content grouped together at the top */}
+        <AuthHeader authMode="register" onBack={onBack} />
+        
+        <Animated.View 
+          style={[
+            styles.authContainer,
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.authContent}>
             <View>
               <View style={styles.authTitleContainer}>
                 <Text style={styles.authTitle}>Create Account</Text>
@@ -203,7 +231,6 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                   value={fullName}
                   onChangeText={setFullName}
                 />
-                
                 <CustomTextField
                   label="Email"
                   placeholder="Enter your email"
@@ -217,9 +244,11 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
               <PrimaryButton
                 title="Continue with Email"
                 onPress={handleContinue}
+                loading={loading}
+                disabled={!fullName.trim() || !email.trim() || loading}
                 style={{ marginBottom: 16 }}
               />
-              
+
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
                   By creating an account, you agree to our{' '}
@@ -236,9 +265,10 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                 <Text style={styles.switchAuthLink}>Sign in</Text>
               </TouchableOpacity>
             </View>
-        </View>
-      </Animated.View>
-    </KeyboardAvoidingView>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -252,7 +282,7 @@ const styles = StyleSheet.create({
   },
   authHeaderContent: {
     flex: 1,
-    paddingTop: 80,
+    paddingTop: 30,
     paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
@@ -365,11 +395,13 @@ const styles = StyleSheet.create({
   switchAuthText: {
     fontSize: 14,
     color: colors.appTextGray,
+    paddingBottom: 40,
   },
   switchAuthLink: {
     fontSize: 14,
     color: colors.appPrimaryGreen,
     fontWeight: '600',
+    paddingBottom: 40,
   },
   
   // Terms Styles
