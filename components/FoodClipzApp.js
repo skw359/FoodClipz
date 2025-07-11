@@ -5,8 +5,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -14,13 +12,8 @@ import AuthService from '../services/AuthService';
 import DeepLinkHandler from '../utils/DeepLinkHandler';
 import DiscoverFeed from './DiscoverFeed';
 import EmailVerificationScreen from './EmailVerificationScreen';
-import AuthService from '../services/AuthService';
-import DeepLinkHandler from '../utils/DeepLinkHandler';
-import DiscoverFeed from './DiscoverFeed';
-import EmailVerificationScreen from './EmailVerificationScreen';
 import LoginScreen from './LoginScreen';
 import OnboardingScreen from './OnboardingScreen';
-import ProfileSetupScreen from './ProfileSetupScreen';
 import ProfileSetupScreen from './ProfileSetupScreen';
 import RegisterScreen from './RegisterScreen';
 
@@ -86,9 +79,6 @@ const FoodClipzApp = () => {
   const [userEmail, setUserEmail] = useState('');
   const [userData, setUserData] = useState(null);
   const [registrationData, setRegistrationData] = useState(null);
-  const [userEmail, setUserEmail] = useState('');
-  const [userData, setUserData] = useState(null);
-  const [registrationData, setRegistrationData] = useState(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -114,17 +104,6 @@ const FoodClipzApp = () => {
       setCurrentScreen(toScreen);
       slideAnim.setValue(-slideDirection);
       
-      Animated.parallel([
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        })
       Animated.parallel([
         Animated.timing(opacityAnim, {
           toValue: 1,
@@ -338,7 +317,6 @@ const FoodClipzApp = () => {
           <LoginScreen
             onBack={handleBackToOnboarding}
             onSwitchToRegister={handleSwitchToRegister}
-            onEmailSent={handleEmailSent}
             onEmailSent={handleEmailSent}
           />
         );

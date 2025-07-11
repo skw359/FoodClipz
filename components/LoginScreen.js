@@ -14,18 +14,6 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View
-  Alert,
-  Animated,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
 } from 'react-native';
 import AuthService from '../services/AuthService';
 
