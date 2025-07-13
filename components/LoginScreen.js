@@ -40,25 +40,46 @@ const CoolTextField = ({
   keyboardType, 
   autoCapitalize, 
   secureTextEntry,
-  hasError
-}) => (
-  <View style={styles.textFieldContainer}>
-    <Text style={styles.textFieldLabel}>{label}</Text>
-    <TextInput
-      style={[
-        styles.textField,
-        hasError && styles.textFieldError
-      ]}
-      placeholder={placeholder}
-      value={value}
-      onChangeText={onChangeText}
-      keyboardType={keyboardType || 'default'}
-      autoCapitalize={autoCapitalize || 'sentences'}
-      secureTextEntry={secureTextEntry}
-      placeholderTextColor={colors.appTextGray}
-    />
-  </View>
-);
+  hasError,
+  errorAnimation
+}) => {
+  return (
+    <View style={styles.textFieldContainer}>
+      <Text style={styles.textFieldLabel}>{label}</Text>
+      <Animated.View
+        style={{
+          borderRadius: 12,
+          borderWidth: hasError ? 2 : 1,
+          borderColor: errorAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [colors.appInputBorder, colors.errorRed]
+          }),
+          backgroundColor: errorAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [colors.appInputBackground, colors.errorRedLight]
+          }),
+        }}
+      >
+        <TextInput
+          style={[
+            styles.textField,
+            {
+              borderWidth: 0,
+              backgroundColor: 'transparent'
+            }
+          ]}
+          placeholder={placeholder}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType || 'default'}
+          autoCapitalize={autoCapitalize || 'sentences'}
+          secureTextEntry={secureTextEntry}
+          placeholderTextColor={colors.appTextGray}
+        />
+      </Animated.View>
+    </View>
+  );
+};
 
 const AuthHeader = ({ authMode, onBack }) => (
   <LinearGradient
@@ -141,8 +162,6 @@ const PrimaryButton = ({ title, onPress, style, disabled, loading }) => {
           end={{ x: 1, y: 1 }}
           style={styles.primaryButton}
         >
-
-          
           <Text style={styles.primaryButtonText}>
             {loading ? 'Sending...' : title}
           </Text>
@@ -160,6 +179,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
   
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const errorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -176,6 +196,23 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
       })
     ]).start();
   }, []);
+
+  // animate error state
+  useEffect(() => {
+    if (userNotFoundError) {
+      Animated.timing(errorAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(errorAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [userNotFoundError]);
 
   const handleSendLink = async () => {
     if (!email.trim()) {
@@ -204,7 +241,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
     }
   };
 
-    // when the user clicks "Sign uP"
+  // when the user clicks "Sign uP"
   const handleCreateAccount = () => {
     onSwitchToRegister();
     // I wanna add pre-fill the email but I might need to pass it
@@ -251,11 +288,25 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   hasError={userNotFoundError}
+                  errorAnimation={errorAnim}
                 />
                 
                 {/* error msg */}
                 {userNotFoundError && (
-                  <View style={styles.errorContainer}>
+                  <Animated.View 
+                    style={[
+                      styles.errorContainer,
+                      {
+                        opacity: errorAnim,
+                        transform: [{
+                          translateY: errorAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-10, 0]
+                          })
+                        }]
+                      }
+                    ]}
+                  >
                     <Text style={styles.errorText}>
                       {errorMessage}
                     </Text>
@@ -264,7 +315,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onEmailSent }) => {
                        Tap to register.
                       </Text>
                     </TouchableOpacity>
-                  </View>
+                  </Animated.View>
                 )}
               </View>
               
@@ -372,17 +423,8 @@ const styles = StyleSheet.create({
   textField: {
     padding: 16,
     fontSize: 16,
-    backgroundColor: colors.appInputBackground,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.appInputBorder,
     color: colors.appFormLabel,
-  },
-
-  textFieldError: {
-    borderColor: colors.errorRed,
-    backgroundColor: colors.errorRedLight,
-    borderWidth: 2,
   },
   errorContainer: {
     marginTop: 8,
@@ -398,12 +440,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   registerButtonText: {
-    color: colors.red,
+    color: colors.black,
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'bold',
   },
-  // END NEW STYLES
   primaryButton: {
     borderRadius: 12,
     paddingVertical: 16,
