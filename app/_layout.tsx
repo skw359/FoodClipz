@@ -1,4 +1,4 @@
-import FoodClipzApp from '../components/FoodClipzApp';
+import FoodClipzApp from '../src/screens/FoodClipzApp';
 
 export default function RootLayout() {
   return <FoodClipzApp />;
